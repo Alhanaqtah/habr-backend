@@ -1,0 +1,25 @@
+--- Статья ---
+DONE - /articles -- все статьи
+DONE - /feed/articles -- персональная подборка статей
+
+DONE - статьи на определённую тематику
+       /flows/develop/articles
+       /flows/admin/articles
+       /flows/design/articles
+       /flows/management/articles
+       /flows/marketing/articles
+       /flows/popsci/articles
+
+добавить сортировку по новизне и по рейтингу
+
+--- Пользователь ---
+/users -- все пользователи сайта
+/users/{username} -- данные пользователя
+/users/{username}/publications -- публикации пользователя
+/users/{username}/followers -- подписчики
+/users/{username}/followings -- подписки
+TODO: продумать пользователя
+
+--- Поиск ---
+/search -- поиск по статьям. Для начала поиск по заголовкам, после поск и по содержимому с приоритетом на содержимое заголовка
+TODO: продумать поиск
