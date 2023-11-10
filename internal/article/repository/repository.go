@@ -69,6 +69,41 @@ func (r *repository) GetAll() *[]article.Article {
 	return &articles
 }
 
+func (r *repository) GetByID(id int) *article.Article {
+	const op = "article.repository.GetByID"
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	row := r.storage.QueryRow(ctx, `SELECT id, title, author, flow, creation_time, level_of_complexity, time_to_read, views, tags, hubs, rating, content FROM articles WHERE id=$1`, id)
+
+	var article article.Article
+
+	err := row.Scan(
+		&article.Id,
+		&article.Title,
+		&article.Author,
+		&article.Flow,
+		&article.CreationTime,
+		&article.LevelOfComplexity,
+		&article.TimeToRead,
+		&article.Views,
+		&article.Tags,
+		&article.Hubs,
+		&article.Rating,
+		&article.Content,
+	)
+	if err != nil {
+		r.log.Error("failed to get flow of articles", slog.String("err", err.Error()), slog.Attr{
+			Key:   "op",
+			Value: slog.StringValue(op),
+		})
+		return nil
+	}
+
+	return &article
+}
+
 func (r *repository) GetFlow(flow string) *[]article.Article {
 	const op = "article.repository.GetFlow"
 
