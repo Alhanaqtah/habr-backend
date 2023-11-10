@@ -6,8 +6,10 @@ import (
 	"os"
 
 	"Alhanaqtah/habr-backend/internal/article"
-	"Alhanaqtah/habr-backend/internal/article/repository"
+	articleRepo "Alhanaqtah/habr-backend/internal/article/repository"
 	"Alhanaqtah/habr-backend/internal/config"
+	"Alhanaqtah/habr-backend/internal/user"
+	userRepo "Alhanaqtah/habr-backend/internal/user/repository"
 	"Alhanaqtah/habr-backend/pkg/client/postgres"
 	"Alhanaqtah/habr-backend/pkg/env"
 	"Alhanaqtah/habr-backend/pkg/logger"
@@ -27,27 +29,31 @@ func main() {
 
 	log.Debug("Initializing connection with database")
 
-	// Database
-	pgclient, _ := postgres.NewClient(
+	// Database client
+	pgClient, _ := postgres.NewClient(
 		os.Getenv("PG_USER"),
 		os.Getenv("POSTGRES_PASSWORD"),
 		os.Getenv("POSTGRES_HOST"),
 		os.Getenv("POSTGRES_PORT"),
 		os.Getenv("POSTGRES_DB"),
 	)
-	repo := repository.New(pgclient, log)
+
+	articleRepo := articleRepo.New(pgClient, log)
+	userRepo := userRepo.New(pgClient, log)
 
 	log.Debug("Initializing router")
 
 	// Router
 	router := chi.NewRouter()
 
-	articles := article.NewHandler(repo, log)
+	articles := article.NewHandler(articleRepo, log)
 	articles.Register(router)
 
-	log.Debug("Initializing server")
+	users := user.NewHandler(userRepo, log)
+	users.Register(router)
 
 	// Server
+
 	srv := &http.Server{
 		Handler:      router,
 		ReadTimeout:  cfg.HttpServer.Timeout,
