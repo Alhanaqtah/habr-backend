@@ -12,11 +12,12 @@ import {
 import { Header } from "./Components";
 
 import userIcon from "./assets/user.png";
+import searchIcon from "./assets/search.png";
 
 export default function App() {
   return (
     <>
-      <Header userIcon={userIcon} />
+      <Header userIcon={userIcon} searchIcon={searchIcon} />
 
       <Routes>
         <Route path="articles" element={<Articles />} />
