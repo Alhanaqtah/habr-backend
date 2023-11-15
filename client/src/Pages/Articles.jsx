@@ -1,5 +1,5 @@
 import React from "react";
-import { PostCard } from "../Components/index";
+import { PostCard, Footer } from "../Components/index";
 import hollowKnightImage from "../assets/hollowKnight.png";
 
 function Articles() {
@@ -19,6 +19,8 @@ function Articles() {
           </section>
         </div>
       </main>
+
+      <Footer />
     </>
   );
 }

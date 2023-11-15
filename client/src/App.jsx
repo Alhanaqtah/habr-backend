@@ -9,7 +9,7 @@ import {
   User,
 } from "./Pages/index.js";
 
-import { Header } from "./Components";
+import { Header } from "./Components/index.js";
 
 import userIcon from "./assets/user.png";
 import searchIcon from "./assets/search.png";
