@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"Alhanaqtah/habr-backend/pkg/logger"
+	lg "Alhanaqtah/habr-backend/pkg/logger/sl"
 	"context"
 	"log/slog"
 
@@ -29,7 +29,7 @@ func (r *repository) GetUsers() *[]user.User {
 
 	rows, err := r.storage.Query(ctx, `SELECT username, rating, karma, registration_date FROM users`)
 	if err != nil {
-		logger.Err(r.log, op, "failed to get all users", err)
+		lg.Err(r.log, op, "failed to get all users", err)
 		return nil
 	}
 	rows.Close()
@@ -46,7 +46,7 @@ func (r *repository) GetUsers() *[]user.User {
 			&user.RegistrationDate,
 		)
 		if err != nil {
-			logger.Err(r.log, op, "failed to sc users", err)
+			lg.Err(r.log, op, "failed to sc users", err)
 			return nil
 		}
 
@@ -78,7 +78,7 @@ func (r *repository) GetUser(username string) *user.User {
 		&user.Followings,
 	)
 	if err != nil {
-		logger.Err(r.log, op, "failed to scan user", err)
+		lg.Err(r.log, op, "failed to scan user", err)
 		return nil
 	}
 

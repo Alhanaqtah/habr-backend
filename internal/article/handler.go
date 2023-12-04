@@ -1,6 +1,7 @@
 package article
 
 import (
+	lg "Alhanaqtah/habr-backend/pkg/logger/sl"
 	"log/slog"
 	"net/http"
 	"slices"
@@ -19,19 +20,19 @@ var flows = []string{
 	"popsci",
 }
 
-type handler struct {
+type Handler struct {
 	storage storage
 	log     *slog.Logger
 }
 
-func NewHandler(storage storage, log *slog.Logger) *handler {
-	return &handler{
+func NewHandler(storage storage, log *slog.Logger) *Handler {
+	return &Handler{
 		storage: storage,
 		log:     log,
 	}
 }
 
-func (h *handler) Register(r *chi.Mux) {
+func (h *Handler) Register(r *chi.Mux) {
 	r.Route("/articles", func(r chi.Router) {
 		r.Get("/", h.getAllArticles)
 		r.Get("/{id}", h.getArticleByID)
@@ -39,7 +40,7 @@ func (h *handler) Register(r *chi.Mux) {
 	})
 }
 
-func (h *handler) getAllArticles(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getAllArticles(w http.ResponseWriter, r *http.Request) {
 	//const op = "article.handler.getAllArticles"
 
 	// Запрос к бд
@@ -49,15 +50,12 @@ func (h *handler) getAllArticles(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, articles)
 }
 
-func (h *handler) getArticleByID(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getArticleByID(w http.ResponseWriter, r *http.Request) {
 	const op = "article.handler.getArticlesByID"
 
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		h.log.Error("failed to get flow {id} param", slog.String("err", err.Error()), slog.Attr{
-			Key:   "op",
-			Value: slog.StringValue(op),
-		})
+		lg.Err(h.log, op, "failed to get flow {id} param", err)
 
 		render.JSON(w, r, "Статья не найдена")
 
@@ -68,7 +66,7 @@ func (h *handler) getArticleByID(w http.ResponseWriter, r *http.Request) {
 	article := h.storage.GetByID(id)
 
 	if article == nil {
-		h.log.Debug("article not found", slog.String("err", err.Error()), slog.Attr{
+		h.log.Debug("article not found", slog.Attr{
 			Key:   "op",
 			Value: slog.StringValue(op),
 		})
@@ -82,7 +80,7 @@ func (h *handler) getArticleByID(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, article)
 }
 
-func (h *handler) getArticlesByFlow(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getArticlesByFlow(w http.ResponseWriter, r *http.Request) {
 	const op = "article.handler.getArticlesByFlow"
 
 	flow := chi.URLParam(r, "flow")
