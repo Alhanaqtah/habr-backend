@@ -12,53 +12,55 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-type repository struct {
+type Repository struct {
 	storage *pgxpool.Pool
 	log     *slog.Logger
 }
 
-func New(pgClient *pgxpool.Pool, log *slog.Logger) *repository {
-	return &repository{
+func New(pgClient *pgxpool.Pool, log *slog.Logger) *Repository {
+	return &Repository{
 		storage: pgClient,
 		log:     log,
 	}
 }
 
-func (r *repository) GetAll() *[]article.Article {
+func (r *Repository) GetAll() *[]article.Article {
 	const op = "article.repository.GetAll"
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rows, err := r.storage.Query(ctx,
-		`SELECT
-    			articles.id,
-    			articles.title,
-    			(
-        			SELECT
-						ARRAY_AGG(username)
-        			FROM users
-        				JOIN bookmarks ON bookmarks.user_id = users.id
-					WHERE bookmarks.article_id = articles.id
-    			) AS Authors,
-				flow.flow AS Flow,
-				articles.creation_time,
-				levels_of_complexity.level_of_complexity AS Level_of_complexity,
-				tags.tag AS Tags,
-				hubs.hub AS Hubs,
-				articles.rating,
-				articles.content
-			FROM
-    			articles
-			JOIN
-				flow ON articles.flow_id = flow.id
-			JOIN
-				levels_of_complexity ON articles.level_of_complexity_id = levels_of_complexity.id
-			JOIN
-    			tags ON articles.tag_id = tags.id
-			JOIN
-    			hubs ON articles.hub_id = hubs.id;
-	`)
+	query := `
+		SELECT
+			articles.id,
+			articles.title,
+			ARRAY_AGG(users.username) AS Authors,
+			flow.flow AS Flow,
+			articles.creation_time,
+			levels_of_complexity.level_of_complexity AS Level_of_complexity,
+			ARRAY_AGG(tags.tag) AS Tags,
+			ARRAY_AGG(hubs.hub) AS Hubs,
+			articles.rating,
+			articles.content
+		FROM
+			articles
+		JOIN
+			flow ON articles.flow_id = flow.id
+		JOIN
+			levels_of_complexity ON articles.level_of_complexity_id = levels_of_complexity.id
+		JOIN
+			tags ON articles.tag_id = tags.id
+		JOIN
+			hubs ON articles.hub_id = hubs.id
+		LEFT JOIN
+			bookmarks ON bookmarks.article_id = articles.id
+		LEFT JOIN
+			users ON users.id = bookmarks.user_id
+		GROUP BY
+			articles.id, flow.flow, levels_of_complexity.level_of_complexity;
+	`
+
+	rows, err := r.storage.Query(ctx, query)
 	if err != nil {
 		lg.Err(r.log, op, "failed to get all articles", err)
 		return nil
@@ -105,117 +107,44 @@ func (r *repository) GetAll() *[]article.Article {
 	return &articles
 }
 
-func (r *repository) GetByID(id int) *article.Article {
-	const op = "article.repository.GetByID"
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	row := r.storage.QueryRow(ctx,
-		`SELECT
-			articles.id,
-			articles.title,
-			(
-				SELECT
-					ARRAY_AGG(username)
-				FROM users
-					JOIN bookmarks ON bookmarks.user_id = users.id
-				WHERE bookmarks.article_id = articles.id
-			) AS Authors,
-			flow.flow AS Flow,
-			articles.creation_time,
-			levels_of_complexity.level_of_complexity AS Level_of_complexity,
-			tags.tag AS Tags,
-			hubs.hub AS Hubs,
-			articles.rating,
-			articles.content
-		FROM
-			articles
-				JOIN
-			flow ON articles.flow_id = flow.id
-				JOIN
-			levels_of_complexity ON articles.level_of_complexity_id = levels_of_complexity.id
-				JOIN
-			tags ON articles.tag_id = tags.id
-				JOIN
-			hubs ON articles.hub_id = hubs.id
-		WHERE articles.id = $1;`,
-		id,
-	)
-
-	var article article.Article
-
-	var authors []string
-	var tags sql.NullString
-	var hubs sql.NullString
-
-	err := row.Scan(
-		&article.Id,
-		&article.Title,
-		pq.Array(&authors),
-		&article.Flow,
-		&article.CreationTime,
-		&article.LevelOfComplexity,
-		&tags,
-		&hubs,
-		&article.Rating,
-		&article.Content,
-	)
-	if err != nil {
-		lg.Err(r.log, op, "failed to get all articles", err)
-		return nil
-	}
-
-	if tags.Valid {
-		article.Tags = strings.Split(tags.String, ",")
-	}
-
-	if hubs.Valid {
-		article.Hubs = strings.Split(hubs.String, ",")
-	}
-
-	article.Authors = authors
-
-	return &article
-}
-
-func (r *repository) GetFlow(flow string) *[]article.Article {
+func (r *Repository) GetFlow(flow string) *[]article.Article {
 	const op = "article.repository.GetFlow"
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rows, err := r.storage.Query(ctx,
-		`SELECT
+	query := `
+		SELECT
 			articles.id,
 			articles.title,
-			(
-				SELECT
-					ARRAY_AGG(username)
-				FROM users
-					JOIN bookmarks ON bookmarks.user_id = users.id
-				WHERE bookmarks.article_id = articles.id
-			) AS Authors,
+			ARRAY_AGG(users.username) AS Authors,
 			flow.flow AS Flow,
 			articles.creation_time,
 			levels_of_complexity.level_of_complexity AS Level_of_complexity,
-			tags.tag AS Tag,
-			hubs.hub AS Hub,
+			ARRAY_AGG(tags.tag) AS Tags,
+			ARRAY_AGG(hubs.hub) AS Hubs,
 			articles.rating,
 			articles.content
 		FROM
 			articles
-				JOIN
+		JOIN
 			flow ON articles.flow_id = flow.id
-				JOIN
+		JOIN
 			levels_of_complexity ON articles.level_of_complexity_id = levels_of_complexity.id
-				JOIN
+		JOIN
 			tags ON articles.tag_id = tags.id
-				JOIN
+		JOIN
 			hubs ON articles.hub_id = hubs.id
-		WHERE flow = $1;`,
-		flow,
-	)
+		LEFT JOIN
+			bookmarks ON bookmarks.article_id = articles.id
+		LEFT JOIN
+			users ON users.id = bookmarks.user_id
+		WHERE flow.flow = $1
+		GROUP BY
+			articles.id, flow.flow, levels_of_complexity.level_of_complexity;
+	`
+
+	rows, err := r.storage.Query(ctx, query, flow)
 	if err != nil {
 		lg.Err(r.log, op, "failed to get flow of articles", err)
 		return nil
@@ -260,4 +189,79 @@ func (r *repository) GetFlow(flow string) *[]article.Article {
 	}
 
 	return &articles
+}
+
+func (r *Repository) GetByID(id int) *article.Article {
+	const op = "article.repository.GetByID"
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	query := `
+		SELECT
+			articles.id,
+			articles.title,
+			ARRAY_AGG(users.username) AS Authors,
+			flow.flow AS Flow,
+			articles.creation_time,
+			levels_of_complexity.level_of_complexity AS Level_of_complexity,
+			ARRAY_AGG(tags.tag) AS Tags,
+			ARRAY_AGG(hubs.hub) AS Hubs,
+			articles.rating,
+			articles.content
+		FROM
+			articles
+		JOIN
+			flow ON articles.flow_id = flow.id
+		JOIN
+			levels_of_complexity ON articles.level_of_complexity_id = levels_of_complexity.id
+		JOIN
+			tags ON articles.tag_id = tags.id
+		JOIN
+			hubs ON articles.hub_id = hubs.id
+		LEFT JOIN
+			bookmarks ON bookmarks.article_id = articles.id
+		LEFT JOIN
+			users ON users.id = bookmarks.user_id
+		WHERE articles.id = $1
+		GROUP BY
+			articles.id, flow.flow, levels_of_complexity.level_of_complexity;
+	`
+
+	row := r.storage.QueryRow(ctx, query, id)
+
+	var article article.Article
+
+	var authors []string
+	var tags sql.NullString
+	var hubs sql.NullString
+
+	err := row.Scan(
+		&article.Id,
+		&article.Title,
+		pq.Array(&authors),
+		&article.Flow,
+		&article.CreationTime,
+		&article.LevelOfComplexity,
+		&tags,
+		&hubs,
+		&article.Rating,
+		&article.Content,
+	)
+	if err != nil {
+		lg.Err(r.log, op, "failed to get all articles", err)
+		return nil
+	}
+
+	if tags.Valid {
+		article.Tags = strings.Split(tags.String, ",")
+	}
+
+	if hubs.Valid {
+		article.Hubs = strings.Split(hubs.String, ",")
+	}
+
+	article.Authors = authors
+
+	return &article
 }

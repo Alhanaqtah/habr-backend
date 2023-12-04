@@ -9,19 +9,19 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-type repository struct {
+type Repository struct {
 	storage *pgxpool.Pool
 	log     *slog.Logger
 }
 
-func New(pgClient *pgxpool.Pool, log *slog.Logger) *repository {
-	return &repository{
+func New(pgClient *pgxpool.Pool, log *slog.Logger) *Repository {
+	return &Repository{
 		storage: pgClient,
 		log:     log,
 	}
 }
 
-func (r *repository) GetUsers() *[]user.User {
+func (r *Repository) GetUsers() *[]user.User {
 	const op = "user.repository.GetUsers"
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -57,7 +57,7 @@ func (r *repository) GetUsers() *[]user.User {
 
 }
 
-func (r *repository) GetUser(username string) *user.User {
+func (r *Repository) GetUser(username string) *user.User {
 	const op = "user.repository.GetUser"
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -86,7 +86,7 @@ func (r *repository) GetUser(username string) *user.User {
 
 }
 
-func (r *repository) GetUserPublications(username string) *user.User {
+func (r *Repository) GetUserPublications(username string) *user.User {
 	const op = "user.repository.GetUserPublications"
 
 	ctx, cancel := context.WithCancel(context.Background())
